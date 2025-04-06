@@ -192,13 +192,13 @@ install_ssrust(){
 # 安装Reality
 install_reality(){
     # 下载并运行Reality安装脚本
-    wget -O "${SCRIPT_DIR}/reality.sh" https://raw.githubusercontent.com/yeahwu/v2ray-wss/main/reality.sh" && bash "${SCRIPT_DIR}/reality.sh"
+    wget -O "${SCRIPT_DIR}/reality.sh" https://raw.githubusercontent.com/yeahwu/v2ray-wss/main/reality.sh && bash "${SCRIPT_DIR}/reality.sh"
 }
 
 # 安装Hysteria2
 install_hy2(){
     # 下载并运行Hysteria2安装脚本
-    wget -O "${SCRIPT_DIR}/hy2.sh" https://raw.githubusercontent.com/yeahwu/v2ray-wss/main/hy2.sh" && bash "${SCRIPT_DIR}/hy2.sh"
+    wget -O "${SCRIPT_DIR}/hy2.sh" https://raw.githubusercontent.com/yeahwu/v2ray-wss/main/hy2.sh && bash "${SCRIPT_DIR}/hy2.sh"
 }
 
 # 显示V2Ray客户端配置信息
