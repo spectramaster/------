@@ -9,7 +9,7 @@ SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 # 下载共享库
 if [ ! -f "${SCRIPT_DIR}/common.sh" ]; then
     echo "下载共享库..."
-    wget -q -O "${SCRIPT_DIR}/common.sh" https://raw.githubusercontent.com/yeahwu/v2ray-wss/main/common.sh
+    wget -q -O "${SCRIPT_DIR}/common.sh" https://raw.githubusercontent.com/spectramaster/vpn/main/common.sh
     chmod +x "${SCRIPT_DIR}/common.sh"
 fi
 
@@ -297,7 +297,7 @@ install_ssrust(){
     
     # 下载并运行Shadowsocks-rust安装脚本
     log_message $INFO "下载Shadowsocks-rust安装脚本"
-    download_file "https://raw.githubusercontent.com/yeahwu/v2ray-wss/main/ss-rust.sh" "${SCRIPT_DIR}/ss-rust.sh" 1
+    download_file "https://raw.githubusercontent.com/spectramaster/vpn/main/ss-rust.sh" "${SCRIPT_DIR}/ss-rust.sh" 1
     
     if [ $? -ne 0 ]; then
         handle_error $ERR_NETWORK "Shadowsocks-rust安装脚本下载失败" 0
@@ -326,7 +326,7 @@ install_reality(){
     
     # 下载并运行Reality安装脚本
     log_message $INFO "下载Reality安装脚本"
-    download_file "https://raw.githubusercontent.com/yeahwu/v2ray-wss/main/reality.sh" "${SCRIPT_DIR}/reality.sh" 1
+    download_file "https://raw.githubusercontent.com/spectramaster/vpn/main/reality.sh" "${SCRIPT_DIR}/reality.sh" 1
     
     if [ $? -ne 0 ]; then
         handle_error $ERR_NETWORK "Reality安装脚本下载失败" 0
@@ -355,7 +355,7 @@ install_hy2(){
     
     # 下载并运行Hysteria2安装脚本
     log_message $INFO "下载Hysteria2安装脚本"
-    download_file "https://raw.githubusercontent.com/yeahwu/v2ray-wss/main/hy2.sh" "${SCRIPT_DIR}/hy2.sh" 1
+    download_file "https://raw.githubusercontent.com/spectramaster/vpn/main/hy2.sh" "${SCRIPT_DIR}/hy2.sh" 1
     
     if [ $? -ne 0 ]; then
         handle_error $ERR_NETWORK "Hysteria2安装脚本下载失败" 0

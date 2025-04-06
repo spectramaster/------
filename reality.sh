@@ -9,7 +9,7 @@ SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
 # 下载共享库
 if [ ! -f "${SCRIPT_DIR}/common.sh" ]; then
     echo "下载共享库..."
-    wget -q -O "${SCRIPT_DIR}/common.sh" https://raw.githubusercontent.com/yeahwu/v2ray-wss/main/common.sh
+    wget -q -O "${SCRIPT_DIR}/common.sh" https://raw.githubusercontent.com/spectramaster/vpn/main/common.sh
     chmod +x "${SCRIPT_DIR}/common.sh"
 fi
 
