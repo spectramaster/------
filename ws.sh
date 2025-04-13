@@ -6,51 +6,67 @@
 # 支持系统: Debian, Ubuntu, CentOS 7及以上
 # 特点: 简单轻量配置，不需要域名和SSL证书
 
-# 引入共享库，使用点号引入脚本，这样可以在当前shell环境中执行
-. ./common.sh
+# 引入共享库，并设置错误处理
+. ./common.sh || { echo "Error: common.sh not found or failed to source."; exit 1; }
 
-# 执行初始化检查，确保脚本以root权限运行
+# 执行初始化检查
 check_root
-# 设置系统时区为亚洲/上海
+# 设置系统时区
 set_timezone
 
 # 设置V2Ray服务参数
-# 生成随机 UUID (用于客户端认证)
+echo "Generating V2Ray (WebSocket only) parameters..."
 v2uuid=$(gen_uuid)
-# 生成随机路径 (用于 WebSocket 的路径)
 v2path=$(gen_path)
-# 随机生成一个2000-65000范围内的端口号
 v2port=$(gen_port)
+echo "UUID: $v2uuid"
+echo "Path: /$v2path"
+echo "Port: $v2port"
+echo "Parameters generated."
 
 # 安装和配置V2Ray的函数
-install_v2ray(){    
+install_v2ray(){
     # 安装基本工具
     install_base
+
+    echo "Installing V2Ray..."
+    # 使用安全函数执行官方脚本安装 V2Ray
+    safe_run_remote_script "https://raw.githubusercontent.com/v2fly/fhs-install-v2ray/master/install-release.sh" "V2Ray"
     
-    # 使用官方脚本安装V2Ray
-    # 该脚本会下载最新版本的V2Ray并设置服务
-    bash <(curl -L https://raw.githubusercontent.com/v2fly/fhs-install-v2ray/master/install-release.sh)
-    
-# 创建V2Ray配置文件，使用WebSocket模式（不带TLS）
-cat >/usr/local/etc/v2ray/config.json<<EOF
+    # 检查 V2Ray 是否安装成功
+    command -v /usr/local/bin/v2ray > /dev/null || error_exit "V2Ray installation failed or '/usr/local/bin/v2ray' not found."
+
+    echo "Creating V2Ray configuration file (WebSocket only)..."
+# 创建V2Ray配置文件
+cat >/usr/local/etc/v2ray/config.json<<EOF || error_exit "Failed to write V2Ray config file."
 {
+  "log": {
+    "loglevel": "warning" 
+  },
   "inbounds": [
     {
+      "listen": "0.0.0.0", # 监听所有接口
       "port": $v2port,
       "protocol": "vmess",
       "settings": {
         "clients": [
           {
-            "id": "$v2uuid"
+            "id": "$v2uuid",
+            "alterId": 0 # Recommended value
           }
-        ]
+        ],
+        "disableInsecureEncryption": false # Allow insecure methods if needed, consider security
       },
       "streamSettings": {
         "network": "ws",
-        "security": "auto",
+        "security": "none", # No TLS
         "wsSettings": {
-        "path": "/$v2path"
+          "path": "/$v2path"
         }
+      },
+      "sniffing": {
+        "enabled": true,
+        "destOverride": ["http", "tls"]
       }
     }
   ],
@@ -58,66 +74,100 @@ cat >/usr/local/etc/v2ray/config.json<<EOF
     {
       "protocol": "freedom",
       "settings": {}
+    },
+    {
+      "protocol": "blackhole",
+      "settings": {},
+      "tag": "blocked"
     }
   ]
 }
 EOF
+    echo "V2Ray configuration file created."
 
     # 启用并启动V2Ray服务
     enable_service v2ray
-    
-    # 清理安装文件
+
+    # 清理安装文件 (仅清理此脚本自身)
     clean_files ws.sh
 
-    # 获取服务器IP地址
+    echo "Getting server IP address..."
     serverIP=$(getIP)
+    if [[ -z "$serverIP" ]]; then
+        error_exit "Failed to get server IP address. Cannot generate client config."
+    fi
+    # 导出供 client_v2ray 使用
+    export WS_SERVER_IP=$serverIP 
+    export WS_PORT=$v2port
+    export WS_UUID=$v2uuid
+    export WS_PATH=$v2path
 
-# 创建客户端配置文件 (保存客户端连接信息)
-cat >/usr/local/etc/v2ray/client.json<<EOF
+    echo "Creating V2Ray client configuration file template..."
+# 创建客户端配置文件
+cat >/usr/local/etc/v2ray/client.json<<EOF || error_exit "Failed to write V2Ray client config file."
 {
-===========配置参数=============
-协议：VMess
-地址：${serverIP}
-端口：${v2port}
-UUID：${v2uuid}
-加密方式：aes-128-gcm
-传输协议：ws
-路径：/${v2path}
-注意：不需要打开tls
+===========配置参数 (V2RayN/V2RayNG 格式)=============
+协议(Protocol)：VMess
+地址(Address)：${serverIP}
+端口(Port)：${v2port}
+用户ID(UUID)：${v2uuid}
+额外ID(AlterID)：0
+加密方式(Security)：auto (建议客户端选 aes-128-gcm 或 none)
+传输协议(Network)：ws
+伪装类型(Type)：none
+伪装域名/主机(Host)：(可留空或填服务器IP)
+路径(Path)：/${v2path}
+底层传输安全(TLS)：none
+
+====================================
+(以下是 VMess 链接)
+请将下方链接复制到 V2Ray 客户端导入：
+vmess://$(echo -n "{\"v\":\"2\",\"ps\":\"1024-ws-${serverIP}\",\"add\":\"${serverIP}\",\"port\":\"${v2port}\",\"id\":\"${v2uuid}\",\"aid\":\"0\",\"net\":\"ws\",\"type\":\"none\",\"host\":\"\",\"path\":\"/${v2path}\",\"tls\":\"\"}" | base64 -w 0)
 }
 EOF
+    echo "Client configuration template saved to /usr/local/etc/v2ray/client.json"
 
-    # 清屏，准备显示客户端配置信息
+    # 清屏
     clear
 }
 
 # 输出客户端配置信息的函数
 client_v2ray(){
-    # 获取服务器IP地址
-    serverIP=$(getIP)
-    
-    # 生成V2Ray连接链接
-    # 将JSON格式的配置信息使用base64编码，生成vmess://开头的链接
-    wslink=$(echo -n "{\"port\":${v2port},\"ps\":\"1024-ws\",\"id\":\"${v2uuid}\",\"aid\":0,\"v\":2,\"add\":\"${serverIP}\",\"type\":\"none\",\"path\":\"/${v2path}\",\"net\":\"ws\",\"method\":\"auto\"}" | base64 -w 0)
+    # 从环境变量获取参数
+    local serverIP=${WS_SERVER_IP:?}
+    local v2port=${WS_PORT:?}
+    local v2uuid=${WS_UUID:?}
+    local v2path=${WS_PATH:?}
 
-    # 显示安装完成信息
+    # 生成V2Ray连接链接
+    local vmess_config="{\"v\":\"2\",\"ps\":\"1024-ws-${serverIP}\",\"add\":\"${serverIP}\",\"port\":\"${v2port}\",\"id\":\"${v2uuid}\",\"aid\":\"0\",\"net\":\"ws\",\"type\":\"none\",\"host\":\"\",\"path\":\"/${v2path}\",\"tls\":\"\"}"
+    local wslink=$(echo -n "${vmess_config}" | base64 -w 0) || echo "Warning: Failed to generate base64 VMess link." >&2
+
     show_completion
-    # 输出V2Ray配置参数
-    echo "===========v2ray配置参数============"
-    echo "协议：VMess"
-    echo "地址：${serverIP}"
-    echo "端口：${v2port}"
+    echo "===========V2Ray (VMess+WS only) Configuration============"
+    echo "Protocol：VMess"
+    echo "Address：${serverIP}"
+    echo "Port：${v2port}"
     echo "UUID：${v2uuid}"
-    echo "加密方式：aes-128-gcm"
-    echo "传输协议：ws"
-    echo "路径：/${v2path}"
-    echo "注意：不需要打开tls"
-    echo "===================================="
-    # 输出客户端可直接导入的URI链接
-    echo "vmess://${wslink}"
+    echo "AlterID：0"
+    echo "Security：auto (建议客户端选 aes-128-gcm 或 none)"
+    echo "Network：ws"
+    echo "Host：(Leave blank or use server IP)"
+    echo "Path：/${v2path}"
+    echo "TLS：none"
+    echo "====================================================="
+    if [[ -n "$wslink" ]]; then
+        echo "Client URI (Import this link into V2RayN/V2RayNG etc.):"
+        echo "vmess://${wslink}"
+    else
+        echo "VMess link generation failed. Please configure manually using the parameters above."
+    fi
+    echo "Client configuration template saved to: /usr/local/etc/v2ray/client.json"
     echo
 }
 
 # 执行安装和配置函数
 install_v2ray
 client_v2ray
+
+echo "V2Ray (WebSocket only) installation script finished."

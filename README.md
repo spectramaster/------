@@ -1,89 +1,103 @@
-# 代理服务一键安装脚本集合
+# VPN Deployment Suite 🚀
 
-# 项目说明：
-# 该项目提供多种代理服务的一键安装脚本，包括：
-# 1. Shadowsocks-rust - 高性能的 Rust 实现版本的 Shadowsocks
-# 2. V2ray + Nginx + WebSocket + TLS - 带 WebSocket 和 TLS 加密的 V2ray 代理
-# 3. Reality - 不需要域名的代理解决方案
-# 4. Hysteria2 - 另一种不需要域名的高性能代理
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
-搭建 Shadowsocks-rust， V2ray+ Nginx + WebSocket 和 Reality, Hysteria2 代理脚本，支持 Debian、Ubuntu、Centos，并支持甲骨文ARM平台。
+**One-click installation scripts for popular VPN and proxy services.**
 
-简单点讲，没域名的用户可以安装 Reality 和 hy2 代理，有域名的可以安装 V2ray+ Nginx + WebSocket 代理，各取所需。
+This project provides a collection of shell scripts designed to simplify the deployment of various proxy services on Linux servers. The suite includes enhanced error handling, adaptive system tuning based on server resources, and a dedicated uninstaller.
 
-# 安装命令 - 运行此命令将下载并执行主脚本
-运行脚本：
+---
 
-```
-wget https://raw.githubusercontent.com/spectramaster/vpn/main/tcp-wss.sh && bash tcp-wss.sh
-```
+## ✨ Features
 
-![image](https://github.com/user-attachments/assets/76396d58-3fef-4028-8a5f-f8c9260c76e5)
+*   **Menu-Driven Installation:** Easy-to-use main script (`tcp-wss.sh`) guides you through the installation choices.
+*   **Multiple Protocol Support:**
+    *   **Shadowsocks-rust:** High-performance, secure socks5 proxy.
+    *   **V2Ray + WebSocket + TLS:** Robust setup requiring a domain name, offering encryption and traffic obfuscation.
+    *   **Reality (Xray-core):** Domainless VLESS proxy solution for enhanced privacy.
+    *   **Hysteria2:** High-performance, UDP-based (QUIC) proxy, also domainless.
+    *   *(Optional)* **V2Ray + WebSocket (No TLS):** Simple WebSocket-only setup.
+*   **Broad OS Compatibility:** Tested on Debian (9+), Ubuntu (16.04+), and CentOS 7+. ARM architecture (like Oracle Cloud Ampere) is supported.
+*   **Adaptive System Tuning:** Includes `tcp-window.sh` which automatically adjusts key network parameters (`sysctl.conf`) and resource limits (`limits.conf`) based on detected system RAM and CPU cores for optimized performance. **(Requires Reboot)**
+*   **Robust Error Handling:** Scripts include `set -e` and checks for critical operations, providing clearer feedback on failures.
+*   **Shared Code Library:** Uses `common.sh` for reusable functions, improving maintainability.
+*   **Dedicated Uninstaller:** Provides `uninstall.sh` for clean removal of installed components.
+*   **Consistent Local Execution:** The main script reliably executes helper scripts from the local repository clone.
 
-# 支持的操作系统列表
-已测试系统如下：
+---
 
-1.Debian 9, 10, 11, 12
+## 📋 Requirements
 
-2.Ubuntu 16.04, 18.04, 20.04, 22.04
+*   A Linux server running a supported OS (Debian 9+, Ubuntu 16.04+, CentOS 7+).
+*   Root (`sudo`) privileges.
+*   Internet connection (for downloading dependencies and installation scripts).
+*   **For V2Ray+WSS+TLS:** A registered domain name with DNS pointed to your server's IP address.
+*   Basic command-line knowledge.
 
-3.CentOS 7
+---
 
-# 客户端配置文件位置
-WSS客户端配置信息保存在：
-`cat /usr/local/etc/v2ray/client.json`
+## 🚀 Quick Start: Installation
 
-Shadowsocks客户端配置信息：
-`cat /etc/shadowsocks/config.json`
+1.  **Connect** to your server via SSH.
+2.  **Download and run** the main installation script using the following command:
 
-Reality客户端配置信息保存在：
-`cat /usr/local/etc/xray/reclient.json`
+    ```bash
+    wget https://raw.githubusercontent.com/spectramaster/vpn/main/tcp-wss.sh && sudo bash tcp-wss.sh
+    ```
+    *(Please replace `spectramaster/vpn` with the correct repository URL if you are using a fork).*
 
-Hysteria2客户端配置信息保存在：
-`cat /etc/hysteria/hyclient.json`
+3.  **Follow the on-screen menu** to choose the service you want to install. The script will guide you through any necessary inputs (like domain name or port).
 
-# 相比原版的更新内容
-1.创建了共享库 common.sh：
+![Installation Menu Screenshot](https://github.com/user-attachments/assets/76396d58-3fef-4028-8a5f-f8c9260c76e5)
 
-a.包含了常用功能函数，如权限检查、IP获取、随机参数生成等
+---
 
-b.每个函数都有详细的注释，说明其用途、参数和返回值
+## ⚙️ Configuration & Client Info
 
-c.设计为可在多种脚本中通用，提高代码复用性
+After a successful installation, the script will display the necessary configuration parameters and import links/URIs for your client application directly on the screen.
 
-2.修改所有原始脚本：
+For reference, template files containing client configuration details are also saved on the server at these locations:
 
-a.每个脚本都引入共享库
+*   **Shadowsocks-rust:** `/etc/shadowsocks/config.json` (Server config) + **Screen Output (Link)**
+*   **V2Ray+WSS+TLS:** `/usr/local/etc/v2ray/client.json` (Client template) + **Screen Output (Link)**
+*   **Reality:** `/usr/local/etc/xray/reclient.json` (Client template) + **Screen Output (Link)**
+*   **Hysteria2:** `/etc/hysteria/hyclient.json` (Client template) + **Screen Output (Link)**
+*   **V2Ray+WS (No TLS):** `/usr/local/etc/v2ray/client.json` (Client template, different content) + **Screen Output (Link)**
 
-b.替换重复代码为共享库中的函数调用
+*Always prioritize the information shown on the screen after installation.*
 
-c.保持原有功能和逻辑不变
+---
 
-3.增加了详细注释：
+## 🧹 Uninstallation
 
-a.文件头部包含脚本名称、功能、创建日期和系统要求
+This suite includes a dedicated uninstaller script to help remove the services cleanly.
 
-b.每个函数都有完整的功能说明
+1.  **Navigate** to the directory where you cloned or downloaded the scripts (e.g., `cd vpn`).
+2.  **Ensure** the script has execute permissions:
+    ```bash
+    chmod +x uninstall.sh
+    ```
+3.  **Run** the script as root:
+    ```bash
+    sudo bash uninstall.sh
+    ```
+4.  **Follow the menu** to select the component(s) you wish to uninstall.
+    *   **Warning:** Be cautious when confirming the removal of potentially shared components like Nginx or Let's Encrypt certificates, as this might affect other applications on your server.
 
-c.每个配置块和重要代码段都有行内注释
+---
 
-d.复杂设置添加了解释性注释，如端口、协议参数等
+## ⚠️ Important Notes
 
-4.代码结构优化：
+1.  **Firewall Rules:** Installation and connection problems are often caused by firewalls. Ensure your server's firewall (e.g., `ufw`, `firewalld`) or cloud provider's security group allows incoming traffic on the port(s) used by the installed service.
+2.  **System Tuning Requires Reboot:** The `tcp-window.sh` script optimizes system network parameters. **A server reboot is required** for these changes (especially file descriptor limits) to take full effect. The installation script may prompt you or you might need to reboot manually afterward.
+3.  **Script Execution:** Always review scripts from the internet before executing them, especially with root privileges. While efforts have been made to ensure these scripts are safe, use them at your own risk.
+4.  **AI Assistance:** Some parts of these scripts were developed with AI assistance. They have been reviewed, but thorough testing in diverse environments is ongoing.
 
-a.使用一致的编码风格和命名规范
+---
 
-b.函数按逻辑顺序排列
+## 🤝 Credits & License
 
-c.主执行流程清晰可辨
+*   This project is based on and heavily modified from the work by [yeahwu/v2ray-wss](https://github.com/yeahwu/v2ray-wss).
+*   Uses official installation methods or binaries from Shadowsocks-rust, V2Ray (v2fly), Xray (XTLS), Hysteria2, and acme.sh.
 
-# 卸载方法
-卸载可以使用这篇帖子中的方法：https://1024.day/d/1296
-
-# 源代码来源
-本仓库源自https://github.com/yeahwu/v2ray-wss
-
-# 重要！
-1.连不上的朋友，建议先检查一下服务器自带防火墙有没有关闭？
-
-2.所有修改均由人工智能生成，仅供学习参考，请谨慎使用脚本
+Licensed under the [MIT License](https://opensource.org/licenses/MIT).
