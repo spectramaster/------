@@ -1,196 +1,83 @@
-#!/bin/sh
-# Issues https://1024.day
-# 这是一个用于优化系统TCP网络参数的脚本
-# 主要提高代理服务的网络性能，减少延迟，提升吞吐量
+##!/bin/sh
+# 问题反馈链接: https://1024.day
+# 脚本名称: tcp-window.sh
+# 脚本功能: 优化系统网络参数，提高代理服务性能
+# 创建日期: 2025年4月13日
+# 支持系统: Debian, Ubuntu, CentOS 7及以上
+# 特点: 调整系统资源限制和TCP参数，优化网络性能
 
-# 获取脚本所在目录
-SCRIPT_DIR=$(cd "$(dirname "$0")" && pwd)
-
-# 下载共享库
-if [ ! -f "${SCRIPT_DIR}/common.sh" ]; then
-    echo "下载共享库..."
-    wget -q -O "${SCRIPT_DIR}/common.sh" https://raw.githubusercontent.com/spectramaster/vpn/main/common.sh
-    chmod +x "${SCRIPT_DIR}/common.sh"
-fi
-
-# 导入共享库
-. "${SCRIPT_DIR}/common.sh"
-
-# 设置脚本名称（用于日志）
-SCRIPT_NAME="TCP窗口优化脚本"
-log_message $INFO "$SCRIPT_NAME 开始执行"
+# 引入共享库，使用点号引入脚本，这样可以在当前shell环境中执行
+. ./common.sh
 
 # 检查root权限
 check_root
 
-# 定义安装步骤总数（用于显示进度）
-TOTAL_STEPS=4
-CURRENT_STEP=0
-
-# 优化系统资源限制
-optimize_system_limits() {
-    CURRENT_STEP=$((CURRENT_STEP + 1))
-    show_progress $CURRENT_STEP $TOTAL_STEPS "优化系统资源限制"
-    
-    log_message $INFO "修改系统资源限制配置文件"
-    
+# 修改系统资源限制，提高最大进程数和最大文件句柄数
+# 这对于处理大量并发连接的代理服务非常重要
 cat >/etc/security/limits.conf<<EOF
-* soft     nproc          655360
-* hard     nproc          655360
-* soft     nofile         655360
-* hard     nofile         655360
+# 设置所有用户的进程数和文件句柄数限制
+* soft     nproc          655360    # 软限制-进程数
+* hard     nproc          655360    # 硬限制-进程数
+* soft     nofile         655360    # 软限制-文件句柄数
+* hard     nofile         655360    # 硬限制-文件句柄数
 
+# 设置root用户的进程数和文件句柄数限制
 root soft     nproc          655360
 root hard     nproc          655360
 root soft     nofile         655360
 root hard     nofile         655360
 
+# 设置bro用户的进程数和文件句柄数限制(如果存在的话)
 bro soft     nproc          655360
 bro hard     nproc          655360
 bro soft     nofile         655360
 bro hard     nofile         655360
 EOF
 
-    # 检查配置文件是否创建成功
-    if [ ! -e "/etc/security/limits.conf" ]; then
-        handle_error $ERR_CONFIGURATION "系统资源限制配置文件创建失败" 0
-        return 1
-    }
-    
-    log_message $INFO "系统资源限制修改成功"
-    return 0
-}
+# 确保PAM模块在会话中应用限制设置
+# 这行配置确保每次登录会话都会加载limits.conf中的限制
+echo "session required pam_limits.so" >> /etc/pam.d/common-session
 
-# 配置PAM模块
-configure_pam() {
-    CURRENT_STEP=$((CURRENT_STEP + 1))
-    show_progress $CURRENT_STEP $TOTAL_STEPS "配置PAM模块"
-    
-    log_message $INFO "配置PAM会话模块"
-    
-    # 确保PAM会话启用系统资源限制
-    echo "session required pam_limits.so" >> /etc/pam.d/common-session
-    echo "session required pam_limits.so" >> /etc/pam.d/common-session-noninteractive
-    
-    # 修改systemd默认文件描述符限制
-    echo "DefaultLimitNOFILE=655360" >> /etc/systemd/system.conf
-    
-    log_message $INFO "PAM模块配置完成"
-    return 0
-}
+# 为非交互式会话也应用相同的限制设置
+echo "session required pam_limits.so" >> /etc/pam.d/common-session-noninteractive
 
-# 优化TCP网络参数
-optimize_tcp_params() {
-    CURRENT_STEP=$((CURRENT_STEP + 1))
-    show_progress $CURRENT_STEP $TOTAL_STEPS "优化TCP网络参数"
-    
-    log_message $INFO "修改TCP网络参数配置文件"
-    
+# 设置systemd默认文件句柄限制
+# 这确保由systemd管理的服务也遵循文件句柄限制
+echo "DefaultLimitNOFILE=655360" >> /etc/systemd/system.conf
+
+# 配置内核网络参数，优化TCP性能
 cat >/etc/sysctl.conf<<EOF
+# 设置系统最大文件句柄数
 fs.file-max = 655360
+# 启用BBR拥塞控制算法，提高网络吞吐量和减少延迟
 net.ipv4.tcp_congestion_control = bbr
+# 使用fq队列调度算法，改善数据包调度
 net.core.default_qdisc = fq
+# 禁用TCP慢启动，提高重新建立连接时的性能
 net.ipv4.tcp_slow_start_after_idle = 0
+# MTU探测设置(已注释)，可以优化数据包大小
 #net.ipv4.tcp_mtu_probing = 1
+# 设置TCP接收缓冲区大小 (最小值、默认值、最大值)，单位为字节
 net.ipv4.tcp_rmem = 8192 262144 167772160
+# 设置TCP发送缓冲区大小 (最小值、默认值、最大值)，单位为字节
 net.ipv4.tcp_wmem = 4096 16384 83886080
+# UDP缓冲区最小值设置(已注释)
 #net.ipv4.udp_rmem_min = 8192
 #net.ipv4.udp_wmem_min = 8192
+# 调整TCP窗口缩放因子，影响窗口增长速率
 net.ipv4.tcp_adv_win_scale = -2
+# 设置未发送数据的低水位标记，优化内存使用
 net.ipv4.tcp_notsent_lowat = 131072
+# IPv6禁用设置(已注释)，如果需要可以取消注释禁用IPv6
 #net.ipv6.conf.all.disable_ipv6 = 1
 #net.ipv6.conf.default.disable_ipv6 = 1
 #net.ipv6.conf.lo.disable_ipv6 = 1
 EOF
 
-    # 检查配置文件是否创建成功
-    if [ ! -e "/etc/sysctl.conf" ]; then
-        handle_error $ERR_CONFIGURATION "TCP网络参数配置文件创建失败" 0
-        return 1
-    }
-    
-    # 尝试立即应用部分网络参数（不必要，但可以提前确认参数有效性）
-    log_message $INFO "测试网络参数有效性"
-    if ! sysctl -p >/dev/null 2>&1; then
-        log_message $WARNING "网络参数应用时出现警告，某些参数可能不被支持"
-    }
-    
-    log_message $INFO "TCP网络参数配置完成"
-    return 0
-}
+# 清理安装脚本
+rm tcp-window.sh
 
-# 清理并重启
-cleanup_and_reboot() {
-    CURRENT_STEP=$((CURRENT_STEP + 1))
-    show_progress $CURRENT_STEP $TOTAL_STEPS "清理并重启系统"
-    
-    # 删除安装脚本
-    log_message $INFO "清理安装脚本"
-    rm -f ${SCRIPT_DIR}/tcp-window.sh
-    
-    log_message $INFO "优化完成，系统将在3秒后重启以应用所有更改"
-    
-    # 确认重启
-    if confirm "是否立即重启系统以应用更改？" "y"; then
-        log_message $INFO "用户确认重启，系统将在3秒后重启"
-        echo "系统将在3秒后重启..."
-        sleep 3 && reboot
-    else
-        log_message $INFO "用户取消重启，建议手动重启系统以应用所有更改"
-        echo "建议手动重启系统以应用所有更改"
-    }
-    
-    return 0
-}
-
-# 主函数
-main() {
-    # 设置错误处理为严格模式
-    set_auto_exit 1
-    
-    # 初始化日志
-    init_log clear
-    
-    # 打印标题
-    print_header "TCP网络优化脚本"
-    
-    log_message $INFO "开始TCP网络优化配置"
-    
-    echo "此脚本将优化系统TCP网络参数，提高代理服务的网络性能。"
-    echo "优化过程将修改以下配置文件："
-    echo "- /etc/security/limits.conf"
-    echo "- /etc/pam.d/common-session"
-    echo "- /etc/pam.d/common-session-noninteractive"
-    echo "- /etc/systemd/system.conf"
-    echo "- /etc/sysctl.conf"
-    echo
-    
-    # 询问用户是否继续
-    if ! confirm "是否继续？" "y"; then
-        log_message $INFO "用户取消操作"
-        echo "操作已取消"
-        return 0
-    }
-    
-    # 执行优化步骤
-    optimize_system_limits && \
-    configure_pam && \
-    optimize_tcp_params && \
-    cleanup_and_reboot
-    
-    # 检查优化结果
-    if [ $? -eq 0 ]; then
-        log_message $INFO "TCP网络优化配置成功"
-    else
-        log_message $ERROR "TCP网络优化配置失败，请查看日志: $LOG_FILE"
-        echo
-        echo "优化失败，请查看日志文件: $LOG_FILE"
-        echo
-        return 1
-    fi
-    
-    return 0
-}
-
-# 执行主函数
-main
+# 应用新设置并重启系统
+# sleep 3 等待3秒后重启
+# >/dev/null 2>&1 将所有输出重定向到/dev/null，隐藏重启信息
+sleep 3 && reboot >/dev/null 2>&1
