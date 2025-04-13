@@ -1,0 +1,35 @@
+// /vpn/docker_deployment/v2ray_wss/config.json.example
+// 用户需要将此文件复制为 config.json 并修改 <...> 部分
+// 运行 `uuidgen` 生成 UUID
+{
+  "log": {
+    "loglevel": "warning"
+  },
+  "inbounds": [
+    {
+      "listen": "0.0.0.0", // 监听容器内所有地址
+      "port": 8080,       // Nginx proxy_pass 指向的端口
+      "protocol": "vmess",
+      "settings": {
+        "clients": [
+          {
+            "id": "<GENERATE_UUID_HERE>", // 替换为生成的 UUID
+            "alterId": 0
+          }
+        ]
+      },
+      "streamSettings": {
+        "network": "ws",
+        "wsSettings": {
+          "path": "/<YOUR_V2RAY_WSPATH>" // 替换为与 Nginx 配置匹配的路径, 例如 /myv2path
+        }
+      }
+    }
+  ],
+  "outbounds": [
+    {
+      "protocol": "freedom",
+      "settings": {}
+    }
+  ]
+}

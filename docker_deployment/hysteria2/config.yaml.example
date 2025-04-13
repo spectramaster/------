@@ -1,0 +1,21 @@
+# /vpn/docker_deployment/hysteria2/config.yaml.example
+# 用户需要将此文件复制为 config.yaml 并修改 <...> 部分
+# 运行 `openssl rand -base64 32` 或类似命令生成密码
+listen: :30000 # 与 docker-compose.yml 中 HY2_PORT 对应 (容器内端口)
+
+# TLS 配置 (可选, Hysteria 2 内建支持, 或可禁用由外部处理)
+# 如果使用自签名或无 TLS, 请相应调整或移除 tls 部分
+# tls:
+#  cert: /etc/hysteria/server.crt # 需要将证书映射到容器内
+#  key: /etc/hysteria/server.key
+
+auth:
+  type: password
+  password: <GENERATE_PASSWORD_HERE> # 替换为生成的密码
+
+# 带宽设置 (示例, 请根据服务器调整)
+# bandwidth:
+#   up: 100 mbps
+#   down: 500 mbps
+
+# 其他配置...

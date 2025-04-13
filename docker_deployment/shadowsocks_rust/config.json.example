@@ -1,0 +1,11 @@
+// /vpn/docker_deployment/shadowsocks_rust/config.json.example
+// 用户需要将此文件复制为 config.json 并修改 <...> 部分
+// 运行 `openssl rand -base64 32` 或类似命令生成密码
+{
+    "server": "0.0.0.0", // 监听容器内所有地址
+    "server_port": 8388, // 与 docker-compose.yml 中 SS_PORT 对应 (容器内端口)
+    "password": "<GENERATE_PASSWORD_HERE>", // 替换为生成的密码
+    "method": "aes-256-gcm", // 推荐加密方式
+    "timeout": 600,
+    "mode": "tcp_and_udp"
+}

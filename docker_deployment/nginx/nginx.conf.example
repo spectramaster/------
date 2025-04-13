@@ -1,0 +1,64 @@
+# /vpn/docker_deployment/nginx/nginx.conf.example
+# 用户需要将此文件复制为 nginx.conf 并修改 <...> 部分
+user www-data; # 或 nginx
+pid /var/run/nginx.pid;
+worker_processes auto;
+worker_rlimit_nofile 655360; # 匹配 ulimit
+
+events { worker_connections 4096; multi_accept on; use epoll; }
+
+http {
+    server_tokens off; sendfile on; tcp_nopush on; tcp_nodelay on;
+    keepalive_timeout 120s; types_hash_max_size 2048;
+    include /etc/nginx/mime.types; default_type application/octet-stream;
+    access_log /dev/stdout; # Docker 中建议输出到 stdout/stderr
+    error_log /dev/stderr warn;
+
+    server { # HTTP Redirect & ACME Challenge
+        listen 80 default_server;
+        listen [::]:80 default_server;
+        server_name <YOUR_DOMAIN_HERE>; # 替换为你的域名
+
+        location /.well-known/acme-challenge/ {
+            root /var/www/acme_challenge; # 与 docker-compose.yml 中 acme_challenge 卷对应
+            allow all;
+        }
+        location / {
+            return 301 https://$host$request_uri;
+        }
+    }
+
+    server { # HTTPS Proxy for V2Ray WSS
+        listen 443 ssl http2 default_server; # 监听的端口需要与 docker-compose.yml 中 ports 映射的容器端口一致
+        listen [::]:443 ssl http2 default_server;
+        server_name <YOUR_DOMAIN_HERE>; # 替换为你的域名
+
+        ssl_certificate /etc/letsencrypt/live/<YOUR_DOMAIN_HERE>/fullchain.pem; # 证书路径 (容器内路径)
+        ssl_certificate_key /etc/letsencrypt/live/<YOUR_DOMAIN_HERE>/privkey.pem; # 私钥路径 (容器内路径)
+        ssl_protocols TLSv1.2 TLSv1.3;
+        ssl_ciphers ECDHE+AESGCM:ECDHE+CHACHA20:DHE+AESGCM:DHE+CHACHA20;
+        ssl_prefer_server_ciphers off;
+        ssl_session_cache shared:SSL:10m;
+
+        location / { # 可以设置一个简单的默认页面或反代其他服务
+            root /usr/share/nginx/html; # Nginx 默认页面
+            index index.html index.htm;
+            # 或者 return 200 "OK";
+        }
+
+        location /<YOUR_V2RAY_WSPATH> { # 替换为 V2Ray 配置中的 WebSocket 路径 (例如 /myv2path)
+            if ($http_upgrade != "websocket") { return 404; }
+            proxy_redirect off;
+            # 注意: 'v2ray_wss' 是 docker-compose.yml 中 V2Ray 服务的名称
+            proxy_pass http://v2ray_wss:8080; # 假设 V2Ray 在容器内监听 8080 端口
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection "upgrade";
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_buffering off;
+            proxy_read_timeout 300s;
+        }
+    }
+}

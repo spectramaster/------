@@ -1,0 +1,106 @@
+# vpn/docker_deployment/docker-compose.yml
+version: '3.8'
+
+services:
+
+  # --- V2Ray + WebSocket + TLS (需要 Nginx & ACME) ---
+  # 取消注释以下服务以启用 V2Ray+WSS+TLS
+  # v2ray_wss:
+  #   image: v2fly/v2fly-core:latest
+  #   container_name: vpn_v2ray_wss
+  #   restart: always
+  #   volumes:
+  #     - ./v2ray_wss:/etc/v2ray # 将宿主机配置目录映射到容器内
+  #   networks:
+  #     - vpn_default_network
+  #   ulimits: { nofile: { soft: 655360, hard: 655360 } }
+
+  # nginx_wss:
+  #   image: nginx:alpine
+  #   container_name: vpn_nginx_wss
+  #   restart: always
+  #   ports:
+  #     - "${HTTP_PORT:-80}:80" # 使用环境变量指定端口, 默认 80
+  #     - "${HTTPS_PORT:-443}:443" # 使用环境变量指定端口, 默认 443
+  #   volumes:
+  #     - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro # 挂载 Nginx 主配置文件 (只读)
+  #     - ./certs:/etc/letsencrypt # 共享证书目录
+  #     - ./acme_challenge:/var/www/acme_challenge # 共享 ACME 验证目录
+  #   networks:
+  #     - vpn_default_network
+  #   depends_on:
+  #     - v2ray_wss
+  #   ulimits: { nofile: { soft: 655360, hard: 655360 } }
+
+  # acme_wss:
+  #   image: neilpang/acme.sh:latest
+  #   container_name: vpn_acme_wss
+  #   restart: always
+  #   volumes:
+  #     - ./certs:/acme.sh # 挂载证书输出目录
+  #     - ./acme_challenge:/var/www/acme_challenge # 挂载 HTTP-01 挑战目录
+  #   environment:
+  #     - ACME_EMAIL=${ACME_EMAIL:-your-email@example.com} # 使用 .env 文件或默认值
+  #   # command/entrypoint 需要用户配置 (参考 acme.sh docker 文档)
+  #   command: daemon # 示例: 首次颁发后以守护进程模式运行
+  #   networks:
+  #     - vpn_default_network
+  #   depends_on:
+  #     - nginx_wss
+
+  # --- Reality (Xray) ---
+  # 取消注释以下服务以启用 Reality
+  # xray_reality:
+  #   image: ghcr.io/xtls/xray:latest
+  #   container_name: vpn_xray_reality
+  #   restart: always
+  #   ports:
+  #     - "${REALITY_PORT:-443}:${REALITY_PORT:-443}/tcp" # 映射 Reality TCP 端口
+  #     # 如需 UDP (不常见), 添加: "- ${REALITY_PORT:-443}:${REALITY_PORT:-443}/udp"
+  #   volumes:
+  #     - ./xray_reality:/etc/xray # 挂载配置目录
+  #   networks:
+  #     - vpn_default_network
+  #   ulimits: { nofile: { soft: 655360, hard: 655360 } }
+
+  # --- Hysteria2 ---
+  # 取消注释以下服务以启用 Hysteria2
+  # hysteria2:
+  #   image: hysteria/hysteria:latest
+  #   container_name: vpn_hysteria2
+  #   restart: always
+  #   ports:
+  #     - "${HY2_PORT:-30000}:${HY2_PORT:-30000}/udp" # 必须映射 UDP 端口
+  #     # - "${HY2_PORT:-30000}:${HY2_PORT:-30000}/tcp" # 如果配置需要 TCP
+  #   volumes:
+  #     - ./hysteria2:/etc/hysteria # 挂载配置目录
+  #   command: server --config /etc/hysteria/config.yaml # 指定配置文件
+  #   networks:
+  #     - vpn_default_network
+  #   ulimits: { nofile: { soft: 655360, hard: 655360 } }
+
+  # --- Shadowsocks-rust ---
+  # 取消注释以下服务以启用 Shadowsocks-rust
+  # shadowsocks_rust:
+  #   image: teddysun/shadowsocks-rust:latest
+  #   container_name: vpn_ss_rust
+  #   restart: always
+  #   ports:
+  #     - "${SS_PORT:-8388}:${SS_PORT:-8388}/tcp" # 映射 TCP 端口
+  #     - "${SS_PORT:-8388}:${SS_PORT:-8388}/udp" # 映射 UDP 端口
+  #   volumes:
+  #     - ./shadowsocks_rust:/etc/shadowsocks-rust # 挂载配置目录
+  #   command: ssserver -c /etc/shadowsocks-rust/config.json # 指定配置文件
+  #   networks:
+  #     - vpn_default_network
+  #   ulimits: { nofile: { soft: 655360, hard: 655360 } }
+
+
+networks:
+  vpn_default_network:
+    driver: bridge
+    name: vpn_network # 给网络一个固定名字 (可选)
+
+volumes: # 如果希望用命名卷管理证书 (可选)
+  certs:
+  acme_challenge:
