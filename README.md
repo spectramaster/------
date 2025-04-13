@@ -26,6 +26,32 @@ This project provides a collection of shell scripts designed to simplify the dep
 
 ---
 
+## 📜 Evolution from Original Version
+
+This script suite has undergone significant improvements compared to its original base (derived from yeahwu/v2ray-wss):
+
+1.  **Created Shared Library (`common.sh`):**
+    *   Extracted common utility functions (e.g., root check, IP fetching, random parameter generation, package installation, service management).
+    *   Aimed at enhancing code reusability and simplifying maintenance.
+2.  **Refactored Original Scripts:**
+    *   Modified individual service scripts (`ss-rust.sh`, `reality.sh`, etc.) to import and utilize functions from `common.sh`.
+    *   Replaced repetitive code blocks while preserving the core installation logic.
+3.  **Added Detailed Comments & Optimized Structure:**
+    *   Incorporated more comprehensive comments in file headers, functions, and critical code sections.
+    *   Improved code style, naming conventions, and the clarity of the execution flow.
+4.  **Enhanced Error Handling Mechanism:**
+    *   Introduced `set -e` and added checks after crucial steps to ensure scripts exit early and explicitly upon encountering errors.
+5.  **Introduced Adaptive System Tuning (`tcp-window.sh`):**
+    *   Dynamically adjusts network parameters (like TCP buffers, connection queues) and resource limits (file descriptors) based on detected server RAM and CPU cores, applying more appropriate optimizations for different hardware configurations.
+6.  **Fixed Script Dependency Issues:**
+    *   The main menu script (`tcp-wss.sh`) now directly invokes helper scripts located within the local repository, rather than downloading and executing them from external URLs. This guarantees execution consistency and enhances trustworthiness.
+7.  **Added Dedicated Uninstaller (`uninstall.sh`):**
+    *   Provided a menu-driven interface allowing users to selectively remove installed services and their associated configurations, improving overall usability.
+
+*(Note: This list highlights major iterative improvements and may not include every minor adjustment.)*
+
+---
+
 ## 📋 Requirements
 
 *   A Linux server running a supported OS (Debian 9+, Ubuntu 16.04+, CentOS 7+).
@@ -70,7 +96,7 @@ For reference, template files containing client configuration details are also s
 
 ## 🧹 Uninstallation
 
-This suite includes a dedicated uninstaller script to help remove the services cleanly.
+This suite includes a dedicated uninstaller script (`uninstall.sh`) to help remove the services cleanly.
 
 1.  **Navigate** to the directory where you cloned or downloaded the scripts (e.g., `cd vpn`).
 2.  **Ensure** the script has execute permissions:
