@@ -15,10 +15,8 @@
 运行脚本：
 
 ```
-wget https://raw.githubusercontent.com/yeahwu/v2ray-wss/main/tcp-wss.sh && bash tcp-wss.sh
+wget https://raw.githubusercontent.com/spectramaster/vpn/main/tcp-wss.sh && bash tcp-wss.sh
 ```
-
-**便宜VPS推荐：** https://hostalk.net/deals.html
 
 ![image](https://github.com/user-attachments/assets/76396d58-3fef-4028-8a5f-f8c9260c76e5)
 
@@ -49,3 +47,6 @@ Hysteria2客户端配置信息保存在：
 https://1024.day/d/1296
 
 **提醒：连不上的朋友，建议先检查一下服务器自带防火墙有没有关闭？**
+
+
+**本仓库源自https://github.com/yeahwu/v2ray-wss，所有修改均由人工智能生成，仅供学习参考，请谨慎使用脚本**
